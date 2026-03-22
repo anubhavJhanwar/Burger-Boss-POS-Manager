@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getTodayOrders, processPayment, unlockOrder } from '../services/api';
-import { CreditCard, Banknote, Split, X, Check, Edit, Lock, Unlock } from 'lucide-react';
+import { CreditCard, Banknote, Split, X, Check, Edit } from 'lucide-react';
 import ToastContainer from '../components/ToastContainer';
 import { useToast } from '../hooks/useToast';
 
@@ -254,14 +254,9 @@ const PendingOrders = ({ user }) => {
                       <h3 className="text-lg font-bold text-gray-800">Order #{getOrderNumber(order)}</h3>
                       <p className="text-sm text-gray-500">{new Date(order.paidAt).toLocaleTimeString()}</p>
                     </div>
-                    <div className="flex items-center gap-2">
-                      <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
-                        Paid
-                      </span>
-                      {order.locked && (
-                        <Lock className="text-gray-600" size={16} />
-                      )}
-                    </div>
+                    <span className="bg-green-100 text-green-700 px-3 py-1 rounded-full text-xs font-semibold">
+                      Paid
+                    </span>
                   </div>
 
                   <div className="space-y-2 mb-4">
@@ -292,16 +287,6 @@ const PendingOrders = ({ user }) => {
                       Payment: {getPaymentMethodLabel(order)}
                     </p>
                   </div>
-
-                  {order.locked && (
-                    <button
-                      onClick={() => openUnlockModal(order)}
-                      className="w-full flex items-center justify-center gap-2 bg-gray-100 text-gray-700 py-2 rounded-lg font-medium hover:bg-gray-200 transition-all"
-                    >
-                      <Unlock size={16} />
-                      Unlock Order
-                    </button>
-                  )}
                 </div>
               ))}
             </div>
