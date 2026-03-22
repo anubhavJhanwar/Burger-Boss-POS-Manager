@@ -61,4 +61,7 @@ export const addExpense = (data) => api.post('/expenses', data);
 export const getTodayExpenses = () => api.get('/expenses/today');
 export const deleteExpense = (id) => api.delete(`/expenses/${id}`);
 
+// Admin
+export const resetDatabase = () => api.delete('/admin/reset-data');
+
 export default api;

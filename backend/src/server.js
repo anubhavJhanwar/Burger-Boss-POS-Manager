@@ -204,6 +204,22 @@ async function sendWelcomeEmail(email, name, pin) {
   }
 }
 
+// Reset database - delete orders, expenses, transactions only
+app.delete('/api/admin/reset-data', async (req, res) => {
+  try {
+    const collections = ['orders', 'expenses', 'transactions'];
+    for (const col of collections) {
+      const docs = await firebaseService.getAll(col);
+      for (const doc of docs) {
+        await firebaseService.delete(col, doc.id);
+      }
+    }
+    res.json({ success: true, message: 'Database reset successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, error: error.message });
+  }
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', message: 'Cafe POS API is running' });

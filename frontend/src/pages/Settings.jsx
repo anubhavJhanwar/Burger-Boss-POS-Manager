@@ -1,15 +1,31 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { User, Mail, AlertTriangle, Trash2, LogOut } from 'lucide-react';
-import { deleteUser } from '../services/api';
+import { deleteUser, resetDatabase } from '../services/api';
 import ToastContainer from '../components/ToastContainer';
 import { useToast } from '../hooks/useToast';
 
 const Settings = ({ user, onLogout }) => {
   const { toasts, addToast, removeToast } = useToast();
   const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [showResetModal, setShowResetModal] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [resetting, setResetting] = useState(false);
   const navigate = useNavigate();
+
+  const handleResetDatabase = async () => {
+    setResetting(true);
+    try {
+      await resetDatabase();
+      localStorage.removeItem('cafeUser');
+      addToast('Database reset successfully. All orders, expenses and transactions cleared.', 'success');
+      setShowResetModal(false);
+    } catch (error) {
+      addToast('Failed to reset database: ' + error.message, 'error');
+    } finally {
+      setResetting(false);
+    }
+  };
 
   const handleDeleteAccount = async () => {
     setDeleting(true);
@@ -71,14 +87,62 @@ const Settings = ({ user, onLogout }) => {
         <p className="text-gray-600 mb-4">
           Once you delete your account, there is no going back. This will permanently delete your account and all associated data including orders, inventory, expenses, and transactions.
         </p>
-        <button
-          onClick={() => setShowDeleteModal(true)}
-          className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-all"
-        >
-          <Trash2 size={18} />
-          Delete Account
-        </button>
+        <div className="flex flex-col gap-3">
+          <button
+            onClick={() => setShowResetModal(true)}
+            className="flex items-center gap-2 bg-yellow-500 hover:bg-yellow-600 text-white px-6 py-3 rounded-lg font-semibold transition-all w-fit"
+          >
+            <AlertTriangle size={18} />
+            Reset Database (Orders, Expenses, Transactions)
+          </button>
+          <button
+            onClick={() => setShowDeleteModal(true)}
+            className="flex items-center gap-2 bg-red-600 hover:bg-red-700 text-white px-6 py-3 rounded-lg font-semibold transition-all w-fit"
+          >
+            <Trash2 size={18} />
+            Delete Account
+          </button>
+        </div>
       </div>
+
+      {/* Reset Database Confirmation Modal */}
+      {showResetModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-12 h-12 bg-yellow-100 rounded-full flex items-center justify-center">
+                <AlertTriangle className="text-yellow-600" size={24} />
+              </div>
+              <h2 className="text-xl font-bold text-gray-800">Reset Database?</h2>
+            </div>
+            <p className="text-gray-600 mb-2">
+              This will permanently delete all:
+            </p>
+            <ul className="text-gray-600 text-sm mb-6 list-disc ml-5 space-y-1">
+              <li>Orders</li>
+              <li>Expenses</li>
+              <li>Transactions</li>
+            </ul>
+            <p className="text-gray-500 text-sm mb-6">Menu and inventory data will be kept. This cannot be undone.</p>
+            <div className="flex gap-3">
+              <button
+                onClick={handleResetDatabase}
+                disabled={resetting}
+                className="flex-1 bg-yellow-500 hover:bg-yellow-600 text-white py-3 rounded-lg font-semibold transition-all disabled:opacity-50"
+              >
+                {resetting ? 'Resetting...' : 'Yes, Reset Data'}
+              </button>
+              <button
+                onClick={() => setShowResetModal(false)}
+                disabled={resetting}
+                className="flex-1 bg-gray-100 hover:bg-gray-200 text-gray-700 py-3 rounded-lg font-semibold transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {showDeleteModal && (
