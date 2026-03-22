@@ -136,14 +136,20 @@ export const orderController = {
         // Deduct add-ons inventory
         if (item.addons && item.addons.length > 0) {
           for (const addon of item.addons) {
-            const addonData = await firebaseService.getById('addons', addon.id);
-            if (addonData && addonData.inventoryItemId) {
-              const ingredient = await firebaseService.getById('inventory_items', addonData.inventoryItemId);
-              if (ingredient) {
-                const newStock = ingredient.stock - item.quantity;
-                const inventoryRef = db.collection('inventory_items').doc(addonData.inventoryItemId);
-                batch.update(inventoryRef, { stock: newStock });
-              }
+            // Support both addon.id (from cart) and addon.inventoryId (direct reference)
+            const addonLookupId = addon.id || addon.inventoryId;
+            if (!addonLookupId) continue;
+
+            const addonData = await firebaseService.getById('addons', addonLookupId);
+            const inventoryItemId = addonData?.inventoryItemId || addon.inventoryItemId;
+            if (!inventoryItemId) continue;
+
+            const ingredient = await firebaseService.getById('inventory_items', inventoryItemId);
+            if (ingredient) {
+              const addonQty = addon.quantity || 1;
+              const newStock = ingredient.stock - (addonQty * item.quantity);
+              const inventoryRef = db.collection('inventory_items').doc(inventoryItemId);
+              batch.update(inventoryRef, { stock: newStock });
             }
           }
         }

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { User, Mail, Lock, AlertTriangle, Trash2, LogOut } from 'lucide-react';
+import { User, Mail, AlertTriangle, Trash2, LogOut } from 'lucide-react';
 import { deleteUser } from '../services/api';
 import ToastContainer from '../components/ToastContainer';
 import { useToast } from '../hooks/useToast';
@@ -53,25 +53,13 @@ const Settings = ({ user, onLogout }) => {
       {/* Security Section */}
       <div className="bg-white rounded-xl shadow-md p-6 border border-gray-200">
         <h2 className="text-xl font-bold text-gray-800 mb-4">Security</h2>
-        <div className="space-y-3">
-          <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
-            <Lock className="text-gray-600" size={20} />
-            <div className="flex-1">
-              <p className="text-sm text-gray-600">PIN</p>
-              <p className="font-medium text-gray-800">••••••</p>
-            </div>
-            <button className="text-orange-600 hover:text-orange-700 font-medium text-sm">
-              Change PIN
-            </button>
-          </div>
-          <button
-            onClick={onLogout}
-            className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold transition-all"
-          >
-            <LogOut size={18} />
-            Logout
-          </button>
-        </div>
+        <button
+          onClick={onLogout}
+          className="w-full flex items-center justify-center gap-2 bg-gray-100 hover:bg-gray-200 text-gray-700 px-6 py-3 rounded-lg font-semibold transition-all"
+        >
+          <LogOut size={18} />
+          Logout
+        </button>
       </div>
 
       {/* Danger Zone */}

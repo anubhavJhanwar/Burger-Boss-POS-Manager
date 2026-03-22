@@ -9,7 +9,7 @@ const CartPanel = ({ cart, onUpdateQuantity, onRemove, onPlaceOrder, inventoryWa
   }, 0);
   const tax = 0;
   const total = subtotal + tax;
-
+  
   const hasLowInventory = inventoryWarnings.length > 0;
 
   return (
