@@ -1,0 +1,24 @@
+name,price,category
+Aloo Tikki Burger,79,Burger
+Paneer Burger,99,Burger
+Veg Burger,89,Burger
+Cheese Burger,109,Burger
+Chicken Burger,119,Burger
+Fries,59,Sides
+Onion Rings,69,Sides
+Nachos,79,Sides
+Cold Coffee,89,Beverages
+Hot Coffee,69,Beverages
+Tea,39,Beverages
+Lemonade,49,Beverages
+Coke,40,Beverages
+Sprite,40,Beverages
+Chocolate Shake,99,Beverages
+Vanilla Shake,99,Beverages
+Strawberry Shake,99,Beverages
+Garlic Bread,69,Sides
+Cheese Garlic Bread,89,Sides
+Pasta,129,Main Course
+Pizza,199,Main Course
+Sandwich,79,Main Course
+Grilled Sandwich,99,Main Course

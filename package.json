@@ -1,0 +1,15 @@
+{
+  "name": "cafe-pos-system",
+  "version": "1.0.0",
+  "description": "Complete Cafe POS + Inventory + Expense + Order Management System",
+  "private": true,
+  "scripts": {
+    "install:all": "cd backend && npm install && cd ../frontend && npm install",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:frontend": "cd frontend && npm run dev",
+    "dev": "echo 'Run npm run dev:backend and npm run dev:frontend in separate terminals'"
+  },
+  "keywords": ["pos", "cafe", "inventory", "expense-tracking"],
+  "author": "",
+  "license": "MIT"
+}
