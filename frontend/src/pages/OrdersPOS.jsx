@@ -4,7 +4,7 @@ import MenuCard from '../components/MenuCard';
 import CartPanel from '../components/CartPanel';
 import ToastContainer from '../components/ToastContainer';
 import ConfirmModal from '../components/ConfirmModal';
-import { getMenu, createOrder, updateOrder, getAddons, getIngredients, getAllRecipes } from '../services/api';
+import { getMenu, createOrder, updateOrder, getAddons, getIngredients, getAllRecipes, getCombos } from '../services/api';
 import { useToast } from '../hooks/useToast';
 import { X, Plus } from 'lucide-react';
 
@@ -23,8 +23,12 @@ const OrdersPOS = ({ user }) => {
   const [editingOrder, setEditingOrder] = useState(null);
   const [ingredients, setIngredients] = useState([]);
   const [recipes, setRecipes] = useState([]);
+  const [combos, setCombos] = useState([]);
   const [inventoryWarnings, setInventoryWarnings] = useState([]);
   const [confirmRemove, setConfirmRemove] = useState(null);
+  const [showComboAddonModal, setShowComboAddonModal] = useState(false);
+  const [selectedCombo, setSelectedCombo] = useState(null);
+  const [selectedComboAddons, setSelectedComboAddons] = useState([]);
 
   useEffect(() => {
     loadData();
@@ -44,16 +48,18 @@ const OrdersPOS = ({ user }) => {
 
   const loadData = async () => {
     try {
-      const [menuRes, addonsRes, ingredientsRes, recipesRes] = await Promise.all([
+      const [menuRes, addonsRes, ingredientsRes, recipesRes, combosRes] = await Promise.all([
         getMenu(),
         getAddons(),
         getIngredients(),
         getAllRecipes(),
+        getCombos(),
       ]);
       setMenu(menuRes.data.data);
       setAddons(addonsRes.data.data);
       setIngredients(ingredientsRes.data.data);
       setRecipes(recipesRes.data.data);
+      setCombos(combosRes.data.data.filter(c => c.isActive !== false));
     } catch (error) {
       console.error('Error loading data:', error);
       addToast('Failed to load data', 'error');
@@ -67,6 +73,41 @@ const OrdersPOS = ({ user }) => {
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
     return matchesSearch && matchesCategory && item.available;
   });
+
+  const openComboAddonModal = (combo) => {
+    setSelectedCombo(combo);
+    setSelectedComboAddons([]);
+    setShowComboAddonModal(true);
+  };
+
+  const toggleComboAddon = (addon) => {
+    if (selectedComboAddons.find(a => a.id === addon.id)) {
+      setSelectedComboAddons(selectedComboAddons.filter(a => a.id !== addon.id));
+    } else {
+      setSelectedComboAddons([...selectedComboAddons, addon]);
+    }
+  };
+
+  const addComboToCart = () => {
+    const cartItem = {
+      type: 'combo',
+      comboId: selectedCombo.id,
+      id: selectedCombo.id,
+      name: selectedCombo.name,
+      price: selectedCombo.price,
+      quantity: 1,
+      items: selectedCombo.items,
+      addons: selectedComboAddons,
+      cartId: Date.now(),
+    };
+    const newCart = [...cart, cartItem];
+    setCart(newCart);
+    checkInventoryWarnings(newCart);
+    setShowComboAddonModal(false);
+    setSelectedCombo(null);
+    setSelectedComboAddons([]);
+    addToast('Combo added to cart', 'success');
+  };
 
   const openAddonModal = (item) => {
     setSelectedItem(item);
@@ -174,6 +215,8 @@ const OrdersPOS = ({ user }) => {
           name: item.name,
           price: item.price,
           quantity: item.quantity,
+          type: item.type || 'item',
+          ...(item.type === 'combo' ? { comboId: item.comboId, items: item.items } : {}),
           addons: item.addons || [],
         })),
         subtotal,
@@ -243,6 +286,34 @@ const OrdersPOS = ({ user }) => {
               </div>
             ))}
           </div>
+
+          {/* Combos Section */}
+          {combos.length > 0 && (
+            <div>
+              <h2 className="text-lg font-bold text-gray-700 mb-3">🍱 Combo Meals</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+                {combos.map(combo => (
+                  <div
+                    key={combo.id}
+                    onClick={() => openComboAddonModal(combo)}
+                    className="bg-white rounded-xl shadow-md p-4 border-2 border-orange-100 hover:border-orange-400 hover:shadow-lg transition-all cursor-pointer"
+                  >
+                    <div className="flex justify-between items-start mb-2">
+                      <h3 className="font-bold text-gray-800">{combo.name}</h3>
+                      <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full capitalize">{combo.type || 'fixed'}</span>
+                    </div>
+                    <p className="text-xs text-gray-500 mb-3">
+                      {(combo.items || []).map(ci => `${ci.menuItemName} ×${ci.quantity}`).join(' + ')}
+                    </p>
+                    <div className="flex justify-between items-center">
+                      <span className="text-xl font-bold text-orange-600">₹{combo.price}</span>
+                      <span className="bg-orange-500 text-white text-xs px-3 py-1 rounded-full font-medium">Add</span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
         <div className="lg:sticky lg:top-6 lg:self-start">
           <CartPanel
@@ -321,6 +392,72 @@ const OrdersPOS = ({ user }) => {
               </button>
               <button
                 onClick={() => setShowAddonModal(false)}
+                className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-all"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Combo Add-ons Modal */}
+      {showComboAddonModal && selectedCombo && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
+          <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-md">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-gray-800">{selectedCombo.name}</h2>
+              <button onClick={() => setShowComboAddonModal(false)} className="text-gray-500 hover:text-gray-700">
+                <X size={24} />
+              </button>
+            </div>
+
+            <div className="mb-4">
+              <p className="text-2xl font-bold text-orange-600">₹{selectedCombo.price}</p>
+              <p className="text-sm text-gray-500 mt-1">
+                Includes: {(selectedCombo.items || []).map(ci => `${ci.menuItemName} ×${ci.quantity}`).join(', ')}
+              </p>
+            </div>
+
+            {addons.length > 0 && (
+              <div className="mb-6">
+                <h3 className="font-semibold text-gray-800 mb-3">Add-ons (Optional)</h3>
+                <div className="space-y-2">
+                  {addons.map(addon => (
+                    <label
+                      key={addon.id}
+                      className={`flex items-center justify-between p-3 border-2 rounded-lg cursor-pointer transition-all ${
+                        selectedComboAddons.find(a => a.id === addon.id)
+                          ? 'border-orange-500 bg-orange-50'
+                          : 'border-gray-200 hover:border-gray-300'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <input
+                          type="checkbox"
+                          checked={!!selectedComboAddons.find(a => a.id === addon.id)}
+                          onChange={() => toggleComboAddon(addon)}
+                          className="w-4 h-4"
+                        />
+                        <span className="font-medium text-gray-800">{addon.name}</span>
+                      </div>
+                      <span className="text-orange-600 font-semibold">+₹{addon.price}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              <button
+                onClick={addComboToCart}
+                className="flex-1 bg-gradient-to-r from-orange-500 to-red-600 text-white py-3 rounded-lg font-semibold hover:shadow-lg transition-all flex items-center justify-center gap-2"
+              >
+                <Plus size={18} />
+                Add to Cart
+              </button>
+              <button
+                onClick={() => setShowComboAddonModal(false)}
                 className="flex-1 bg-gray-100 text-gray-700 py-3 rounded-lg font-semibold hover:bg-gray-200 transition-all"
               >
                 Cancel

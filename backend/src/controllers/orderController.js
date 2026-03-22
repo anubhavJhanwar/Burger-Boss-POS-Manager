@@ -112,31 +112,38 @@ export const orderController = {
 
       // Deduct inventory based on recipes and add-ons
       for (const item of order.items) {
-        // Get recipe for this menu item
-        const recipes = await firebaseService.query('recipes', [
-          { field: 'menuItemName', operator: '==', value: item.name }
-        ]);
-
-        if (recipes.length > 0) {
-          const recipe = recipes[0];
-          
-          // Deduct recipe ingredients
-          for (const recipeIngredient of recipe.ingredients) {
-            const { ingredientId, quantity } = recipeIngredient;
-            const ingredient = await firebaseService.getById('inventory_items', ingredientId);
-            
-            if (ingredient) {
-              const newStock = ingredient.stock - (quantity * item.quantity);
-              const inventoryRef = db.collection('inventory_items').doc(ingredientId);
-              batch.update(inventoryRef, { stock: newStock });
+        // Helper: deduct recipe ingredients for a menu item name
+        const deductRecipe = async (menuItemName, qty) => {
+          const recipes = await firebaseService.query('recipes', [
+            { field: 'menuItemName', operator: '==', value: menuItemName }
+          ]);
+          if (recipes.length > 0) {
+            for (const recipeIngredient of recipes[0].ingredients) {
+              const { ingredientId, quantity } = recipeIngredient;
+              const ingredient = await firebaseService.getById('inventory_items', ingredientId);
+              if (ingredient) {
+                const newStock = ingredient.stock - (quantity * qty);
+                batch.update(db.collection('inventory_items').doc(ingredientId), { stock: newStock });
+              }
             }
           }
+        };
+
+        if (item.type === 'combo') {
+          // Deduct each menu item inside the combo
+          if (item.items && item.items.length > 0) {
+            for (const comboItem of item.items) {
+              await deductRecipe(comboItem.menuItemName, (comboItem.quantity || 1) * item.quantity);
+            }
+          }
+        } else {
+          // Regular menu item - deduct recipe
+          await deductRecipe(item.name, item.quantity);
         }
 
-        // Deduct add-ons inventory
+        // Deduct add-ons inventory (works for both regular items and combos)
         if (item.addons && item.addons.length > 0) {
           for (const addon of item.addons) {
-            // Support both addon.id (from cart) and addon.inventoryId (direct reference)
             const addonLookupId = addon.id || addon.inventoryId;
             if (!addonLookupId) continue;
 
@@ -148,8 +155,7 @@ export const orderController = {
             if (ingredient) {
               const addonQty = addon.quantity || 1;
               const newStock = ingredient.stock - (addonQty * item.quantity);
-              const inventoryRef = db.collection('inventory_items').doc(inventoryItemId);
-              batch.update(inventoryRef, { stock: newStock });
+              batch.update(db.collection('inventory_items').doc(inventoryItemId), { stock: newStock });
             }
           }
         }

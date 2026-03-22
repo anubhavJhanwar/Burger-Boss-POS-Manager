@@ -70,7 +70,17 @@ const CartPanel = ({ cart, onUpdateQuantity, onRemove, onPlaceOrder, inventoryWa
                   <div className="flex-1 pr-2">
                     <h4 className="font-semibold text-gray-800 text-sm leading-tight">
                       {item.name}
+                      {item.type === 'combo' && (
+                        <span className="ml-1 text-xs bg-orange-100 text-orange-600 px-1.5 py-0.5 rounded-full">Combo</span>
+                      )}
                     </h4>
+                    {item.type === 'combo' && item.items && item.items.length > 0 && (
+                      <div className="mt-1 space-y-0.5">
+                        {item.items.map((ci, idx) => (
+                          <p key={idx} className="text-xs text-gray-500">• {ci.menuItemName} ×{ci.quantity}</p>
+                        ))}
+                      </div>
+                    )}
                     {item.addons && item.addons.length > 0 && (
                       <div className="mt-1 space-y-0.5">
                         {item.addons.map((addon, idx) => (

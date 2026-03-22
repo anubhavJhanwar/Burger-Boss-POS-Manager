@@ -7,6 +7,7 @@ import inventoryRoutes from './routes/inventoryRoutes.js';
 import expenseRoutes from './routes/expenseRoutes.js';
 import ingredientRoutes from './routes/ingredientRoutes.js';
 import addonRoutes from './routes/addonRoutes.js';
+import comboRoutes from './routes/comboRoutes.js';
 import { firebaseService } from './services/firebaseService.js';
 
 dotenv.config();
@@ -25,6 +26,7 @@ app.use('/api/inventory', inventoryRoutes);
 app.use('/api/expenses', expenseRoutes);
 app.use('/api/ingredients', ingredientRoutes);
 app.use('/api/addons', addonRoutes);
+app.use('/api/combos', comboRoutes);
 
 // Auth routes
 app.post('/api/auth/signup', async (req, res) => {
