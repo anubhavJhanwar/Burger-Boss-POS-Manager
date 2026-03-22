@@ -66,13 +66,22 @@ const OrdersPOS = ({ user }) => {
     }
   };
 
-  const categories = ['All', ...new Set(menu.map(item => item.category))];
+  const categories = ['All', 'Combos', ...new Set(menu.map(item => item.category))];
 
   const filteredMenu = menu.filter(item => {
     const matchesSearch = item.name.toLowerCase().includes(search.toLowerCase());
     const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
     return matchesSearch && matchesCategory && item.available;
   });
+
+  const filteredCombos = combos.filter(combo => {
+    const matchesSearch = combo.name.toLowerCase().includes(search.toLowerCase());
+    const matchesCategory = selectedCategory === 'All' || selectedCategory === 'Combos';
+    return matchesSearch && matchesCategory;
+  });
+
+  // Hide menu items when "Combos" tab is selected
+  const showMenuItems = selectedCategory !== 'Combos';
 
   const openComboAddonModal = (combo) => {
     setSelectedCombo(combo);
@@ -279,28 +288,34 @@ const OrdersPOS = ({ user }) => {
               </button>
             ))}
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-            {filteredMenu.map(item => (
-              <div key={item.id} onClick={() => openAddonModal(item)}>
-                <MenuCard item={item} onAddToCart={() => {}} />
-              </div>
-            ))}
-          </div>
+          {/* Menu Items */}
+          {showMenuItems && (
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
+              {filteredMenu.map(item => (
+                <div key={item.id} onClick={() => openAddonModal(item)}>
+                  <MenuCard item={item} onAddToCart={() => {}} />
+                </div>
+              ))}
+              {filteredMenu.length === 0 && selectedCategory !== 'Combos' && (
+                <p className="text-gray-400 col-span-3 text-center py-8">No items found</p>
+              )}
+            </div>
+          )}
 
-          {/* Combos Section */}
-          {combos.length > 0 && (
+          {/* Combos */}
+          {filteredCombos.length > 0 && (
             <div>
-              <h2 className="text-lg font-bold text-gray-700 mb-3">🍱 Combo Meals</h2>
+              {showMenuItems && <h2 className="text-lg font-bold text-gray-700 mb-3">🍱 Combo Meals</h2>}
               <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
-                {combos.map(combo => (
+                {filteredCombos.map(combo => (
                   <div
                     key={combo.id}
                     onClick={() => openComboAddonModal(combo)}
                     className="bg-white rounded-xl shadow-md p-4 border-2 border-orange-100 hover:border-orange-400 hover:shadow-lg transition-all cursor-pointer"
                   >
-                    <div className="flex justify-between items-start mb-2">
+                    <div className="flex justify-between items-start mb-1">
                       <h3 className="font-bold text-gray-800">{combo.name}</h3>
-                      <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full capitalize">{combo.type || 'fixed'}</span>
+                      <span className="text-xs bg-orange-100 text-orange-600 px-2 py-0.5 rounded-full font-medium">Combo</span>
                     </div>
                     <p className="text-xs text-gray-500 mb-3">
                       {(combo.items || []).map(ci => `${ci.menuItemName} ×${ci.quantity}`).join(' + ')}
@@ -313,6 +328,10 @@ const OrdersPOS = ({ user }) => {
                 ))}
               </div>
             </div>
+          )}
+
+          {filteredCombos.length === 0 && selectedCategory === 'Combos' && (
+            <div className="text-center py-12 text-gray-400">No combos available</div>
           )}
         </div>
         <div className="lg:sticky lg:top-6 lg:self-start">
