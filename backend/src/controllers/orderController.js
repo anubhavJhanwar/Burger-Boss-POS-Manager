@@ -144,19 +144,36 @@ export const orderController = {
         // Deduct add-ons inventory (works for both regular items and combos)
         if (item.addons && item.addons.length > 0) {
           for (const addon of item.addons) {
-            const addonLookupId = addon.id || addon.inventoryId;
-            if (!addonLookupId) continue;
+            console.log('Processing Add-on:', JSON.stringify(addon));
 
-            const addonData = await firebaseService.getById('addons', addonLookupId);
-            const inventoryItemId = addonData?.inventoryItemId || addon.inventoryItemId;
-            if (!inventoryItemId) continue;
+            // Use inventoryItemId embedded directly first (most reliable)
+            let inventoryItemId = addon.inventoryItemId || null;
+
+            // Fallback: look up from addons collection using addon.id
+            if (!inventoryItemId) {
+              const addonLookupId = addon.id;
+              if (addonLookupId) {
+                const addonData = await firebaseService.getById('addons', addonLookupId);
+                inventoryItemId = addonData?.inventoryItemId || null;
+                console.log('Addon DB lookup result:', JSON.stringify(addonData));
+              }
+            }
+
+            if (!inventoryItemId) {
+              console.log('No inventoryItemId found for addon, skipping:', addon.name);
+              continue;
+            }
 
             const ingredient = await firebaseService.getById('inventory_items', inventoryItemId);
-            if (ingredient) {
-              const addonQty = addon.quantity || 1;
-              const newStock = ingredient.stock - (addonQty * item.quantity);
-              batch.update(db.collection('inventory_items').doc(inventoryItemId), { stock: newStock });
+            if (!ingredient) {
+              console.log('Ingredient not found for id:', inventoryItemId);
+              continue;
             }
+
+            const deductQty = item.quantity; // 1 addon unit per item quantity
+            const newStock = ingredient.stock - deductQty;
+            console.log(`Deducting ${deductQty} from ${ingredient.name}, ${ingredient.stock} → ${newStock}`);
+            batch.update(db.collection('inventory_items').doc(inventoryItemId), { stock: newStock });
           }
         }
       }

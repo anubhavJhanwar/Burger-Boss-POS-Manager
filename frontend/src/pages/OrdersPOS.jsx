@@ -98,6 +98,14 @@ const OrdersPOS = ({ user }) => {
   };
 
   const addComboToCart = () => {
+    // Embed inventoryItemId directly into combo addons too
+    const enrichedAddons = selectedComboAddons.map(addon => ({
+      id: addon.id,
+      name: addon.name,
+      price: addon.price,
+      inventoryItemId: addon.inventoryItemId || null,
+    }));
+
     const cartItem = {
       type: 'combo',
       comboId: selectedCombo.id,
@@ -106,7 +114,7 @@ const OrdersPOS = ({ user }) => {
       price: selectedCombo.price,
       quantity: 1,
       items: selectedCombo.items,
-      addons: selectedComboAddons,
+      addons: enrichedAddons,
       cartId: Date.now(),
     };
     const newCart = [...cart, cartItem];
@@ -133,9 +141,17 @@ const OrdersPOS = ({ user }) => {
   };
 
   const addToCartWithAddons = () => {
+    // Embed inventoryItemId directly so backend deduction never needs a secondary lookup
+    const enrichedAddons = selectedAddons.map(addon => ({
+      id: addon.id,
+      name: addon.name,
+      price: addon.price,
+      inventoryItemId: addon.inventoryItemId || null,
+    }));
+
     const itemWithAddons = {
       ...selectedItem,
-      addons: selectedAddons,
+      addons: enrichedAddons,
       cartId: Date.now(),
     };
 
