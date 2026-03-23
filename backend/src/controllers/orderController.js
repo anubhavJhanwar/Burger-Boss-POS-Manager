@@ -110,72 +110,78 @@ export const orderController = {
         paidAt: new Date().toISOString(),
       });
 
-      // Deduct inventory based on recipes and add-ons
+      // Build deduction map — aggregate ALL deductions before touching inventory
+      const deductionMap = {};
+
+      const addToDeductionMap = (ingredientId, qty) => {
+        if (!ingredientId) return;
+        deductionMap[ingredientId] = (deductionMap[ingredientId] || 0) + qty;
+      };
+
       for (const item of order.items) {
-        // Helper: deduct recipe ingredients for a menu item name
-        const deductRecipe = async (menuItemName, qty) => {
+        // Helper: accumulate recipe ingredients for a menu item name
+        const accumulateRecipe = async (menuItemName, qty) => {
           const recipes = await firebaseService.query('recipes', [
             { field: 'menuItemName', operator: '==', value: menuItemName }
           ]);
           if (recipes.length > 0) {
             for (const recipeIngredient of recipes[0].ingredients) {
-              const { ingredientId, quantity } = recipeIngredient;
-              const ingredient = await firebaseService.getById('inventory_items', ingredientId);
-              if (ingredient) {
-                const newStock = ingredient.stock - (quantity * qty);
-                batch.update(db.collection('inventory_items').doc(ingredientId), { stock: newStock });
-              }
+              addToDeductionMap(recipeIngredient.ingredientId, recipeIngredient.quantity * qty);
             }
           }
         };
 
         if (item.type === 'combo') {
-          // Deduct each menu item inside the combo
           if (item.items && item.items.length > 0) {
             for (const comboItem of item.items) {
-              await deductRecipe(comboItem.menuItemName, (comboItem.quantity || 1) * item.quantity);
+              await accumulateRecipe(comboItem.menuItemName, (comboItem.quantity || 1) * item.quantity);
             }
           }
         } else {
-          // Regular menu item - deduct recipe
-          await deductRecipe(item.name, item.quantity);
+          await accumulateRecipe(item.name, item.quantity);
         }
 
-        // Deduct add-ons inventory (works for both regular items and combos)
+        // Accumulate add-ons
         if (item.addons && item.addons.length > 0) {
           for (const addon of item.addons) {
             console.log('Processing Add-on:', JSON.stringify(addon));
 
-            // Use inventoryItemId embedded directly first (most reliable)
-            let inventoryItemId = addon.inventoryItemId || null;
+            // Support all field name variants
+            const inventoryItemId =
+              addon.inventoryItemId ||
+              addon.linkedIngredientId ||
+              addon.inventoryId ||
+              null;
 
-            // Fallback: look up from addons collection using addon.id
             if (!inventoryItemId) {
-              const addonLookupId = addon.id;
-              if (addonLookupId) {
-                const addonData = await firebaseService.getById('addons', addonLookupId);
-                inventoryItemId = addonData?.inventoryItemId || null;
+              // Fallback: look up from addons collection
+              if (addon.id) {
+                const addonData = await firebaseService.getById('addons', addon.id);
+                const lookedUpId = addonData?.inventoryItemId || addonData?.linkedIngredientId || null;
                 console.log('Addon DB lookup result:', JSON.stringify(addonData));
+                addToDeductionMap(lookedUpId, item.quantity);
+              } else {
+                console.log('No inventoryItemId found for addon, skipping:', addon.name);
               }
-            }
-
-            if (!inventoryItemId) {
-              console.log('No inventoryItemId found for addon, skipping:', addon.name);
               continue;
             }
 
-            const ingredient = await firebaseService.getById('inventory_items', inventoryItemId);
-            if (!ingredient) {
-              console.log('Ingredient not found for id:', inventoryItemId);
-              continue;
-            }
-
-            const deductQty = item.quantity; // 1 addon unit per item quantity
-            const newStock = ingredient.stock - deductQty;
-            console.log(`Deducting ${deductQty} from ${ingredient.name}, ${ingredient.stock} → ${newStock}`);
-            batch.update(db.collection('inventory_items').doc(inventoryItemId), { stock: newStock });
+            addToDeductionMap(inventoryItemId, item.quantity);
           }
         }
+      }
+
+      // Apply all deductions once per ingredient — prevents overwrite bug
+      console.log('Final deduction map:', JSON.stringify(deductionMap));
+      for (const ingredientId of Object.keys(deductionMap)) {
+        const ingredient = await firebaseService.getById('inventory_items', ingredientId);
+        if (!ingredient) {
+          console.log('Ingredient not found for id:', ingredientId);
+          continue;
+        }
+        const newStock = ingredient.stock - deductionMap[ingredientId];
+        console.log(`Deducting ${deductionMap[ingredientId]} from ${ingredient.name}: ${ingredient.stock} → ${newStock}`);
+        batch.update(db.collection('inventory_items').doc(ingredientId), { stock: newStock });
       }
 
       // Create transaction record
