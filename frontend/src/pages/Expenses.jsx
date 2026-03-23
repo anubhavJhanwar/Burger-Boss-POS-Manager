@@ -9,9 +9,13 @@ const Expenses = ({ user }) => {
   const [expenses, setExpenses] = useState([]);
   const [showModal, setShowModal] = useState(false);
   const [expenseName, setExpenseName] = useState('');
+  const [expenseCategory, setExpenseCategory] = useState('Raw Materials');
+  const [customCategory, setCustomCategory] = useState('');
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const { toasts, addToast, removeToast } = useToast();
+
+  const CATEGORIES = ['Raw Materials', 'Utilities', 'Staff', 'Misc', 'Other'];
 
   const presetExpenses = [
     'Milk',
@@ -56,15 +60,20 @@ const Expenses = ({ user }) => {
       return;
     }
 
+    const finalCategory = expenseCategory === 'Other' ? (customCategory.trim() || 'Misc') : expenseCategory;
+
     try {
       await addExpense({
-        category: expenseName,
+        name: expenseName,
+        category: finalCategory,
         amount: parseFloat(formData.get('amount')),
         description: formData.get('notes') || '',
         date: formData.get('date') || new Date().toISOString(),
       });
       setShowModal(false);
       setExpenseName('');
+      setExpenseCategory('Raw Materials');
+      setCustomCategory('');
       loadExpenses();
       e.target.reset();
       addToast('Expense added successfully', 'success');
@@ -115,6 +124,7 @@ const Expenses = ({ user }) => {
               <tr className="border-b border-gray-200">
                 <th className="text-left py-3 text-gray-700 font-semibold">Date</th>
                 <th className="text-left py-3 text-gray-700 font-semibold">Expense Name</th>
+                <th className="text-left py-3 text-gray-700 font-semibold">Category</th>
                 <th className="text-left py-3 text-gray-700 font-semibold">Notes</th>
                 <th className="text-right py-3 text-gray-700 font-semibold">Amount</th>
                 <th className="text-right py-3 text-gray-700 font-semibold">Actions</th>
@@ -133,7 +143,12 @@ const Expenses = ({ user }) => {
                     <td className="py-3 text-gray-800">
                       {new Date(expense.date).toLocaleDateString()}
                     </td>
-                    <td className="py-3 text-gray-800 font-medium">{expense.category}</td>
+                    <td className="py-3 text-gray-800 font-medium">{expense.name || expense.category}</td>
+                    <td className="py-3">
+                      <span className="text-xs px-2 py-1 rounded-full bg-orange-50 text-orange-700 font-medium">
+                        {expense.category}
+                      </span>
+                    </td>
                     <td className="py-3 text-gray-600">{expense.description || '-'}</td>
                     <td className="text-right py-3 text-gray-800 font-medium">₹{expense.amount}</td>
                     <td className="text-right py-3">
@@ -209,6 +224,32 @@ const Expenses = ({ user }) => {
               </div>
 
               <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Category</label>
+                <select
+                  value={expenseCategory}
+                  onChange={e => setExpenseCategory(e.target.value)}
+                  className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                >
+                  {CATEGORIES.map(cat => (
+                    <option key={cat} value={cat}>{cat}</option>
+                  ))}
+                </select>
+              </div>
+
+              {expenseCategory === 'Other' && (
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-2">Custom Category</label>
+                  <input
+                    type="text"
+                    value={customCategory}
+                    onChange={e => setCustomCategory(e.target.value)}
+                    placeholder="Enter custom category"
+                    className="w-full px-4 py-2 bg-gray-50 border border-gray-300 rounded-lg focus:ring-2 focus:ring-orange-500 outline-none"
+                  />
+                </div>
+              )}
+
+              <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Amount (₹)
                 </label>
@@ -258,6 +299,8 @@ const Expenses = ({ user }) => {
                   onClick={() => {
                     setShowModal(false);
                     setExpenseName('');
+                    setExpenseCategory('Raw Materials');
+                    setCustomCategory('');
                     setShowSuggestions(false);
                   }} 
                   className="bg-gray-100 text-gray-700 px-6 py-2 rounded-lg font-medium hover:bg-gray-200 transition-all flex-1"
